@@ -5,7 +5,7 @@ from monzo.session_context import MonzoContext
 
 def _parse_array(response: str, scalar):
     result = make_array(scalar)
-    result.parse_json_string_into_object(response)
+    result.parse_json_string_into_array(response)
     return result
 
 
@@ -15,8 +15,8 @@ def _parse_object(response: str, scalar):
     return result
 
 
-def _get_array(context: MonzoContext, endpoint: str, scalar):
-    response = auth_json_request(context, endpoint)
+def _get_array(context: MonzoContext, endpoint: str, name: str, scalar):
+    response = auth_json_request(context, endpoint)[name]
     return _parse_array(response, scalar)
 
 
