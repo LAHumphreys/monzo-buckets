@@ -5,6 +5,18 @@ import json
 from monzo.session_context import MonzoContext
 
 BASE_URL: str = "https://api.monzo.com/"
+REQUEST_LOGGING = False
+
+
+def log_outgoing(req: request.Request):
+    if REQUEST_LOGGING:
+        print(">> {0}".format(req.full_url))
+
+
+def log_incoming(url: str, message: dict):
+    if REQUEST_LOGGING:
+        print(">> {0}".format(url))
+        print(json.dumps(message, indent=4))
 
 
 class InvalidAuthorization(Exception):
@@ -34,6 +46,7 @@ def complete_login(context: MonzoContext):
 
     token_request = request.Request(url, data=encoded_data, method="POST")
     token_request.add_header("Content-Type", "application/x-www-form-urlencoded")
+    log_outgoing(token_request)
     parse_bearer_token(request.urlopen(token_request), context)
 
 
@@ -50,14 +63,20 @@ def refresh_login(context: MonzoContext):
 
     token_request = request.Request(url, data=encoded_data, method="POST")
     token_request.add_header("Content-Type", "application/x-www-form-urlencoded")
+    log_outgoing(token_request)
     parse_bearer_token(request.urlopen(token_request), context)
 
 
-def auth_json_request(context: MonzoContext, endpoint):
+def auth_json_request(context: MonzoContext, endpoint, params: dict = None):
     url = BASE_URL + endpoint
+    if params is not None:
+        encoded_params = parse.urlencode(params)
+        url += "?" + encoded_params
     token_request = request.Request(url, method="GET")
     token_request.add_header("Authorization", "Bearer " + context.access_token)
 
+    log_outgoing(token_request)
     with request.urlopen(token_request) as response:
         result = json.load(response)
+        log_incoming(token_request.full_url, result)
     return result

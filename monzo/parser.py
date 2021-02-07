@@ -15,11 +15,11 @@ def _parse_object(response: str, scalar):
     return result
 
 
-def _get_array(context: MonzoContext, endpoint: str, name: str, scalar):
-    response = auth_json_request(context, endpoint)[name]
+def _get_array(context: MonzoContext, endpoint: str, name: str, scalar, params: dict = None):
+    response = auth_json_request(context, endpoint, params=params)[name]
     return _parse_array(response, scalar)
 
 
-def _get_object(context: MonzoContext, endpoint: str, scalar):
-    response = auth_json_request(context, endpoint)
+def _get_object(context: MonzoContext, endpoint: str, scalar, params: dict = None):
+    response = auth_json_request(context, endpoint, params=params)
     return _parse_object(response, scalar)
