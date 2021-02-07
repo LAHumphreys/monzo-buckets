@@ -1,25 +1,40 @@
+# pylint: disable=no-self-use, protected-access
 import json
 from typing import List
 from abc import ABC, abstractmethod
 
+class JSONTypeError(Exception):
+    pass
+
 
 class JSONInterface(ABC):
+    _raw_json: dict = None
     _custom_list_fields = []
     _items: List["JSONInterface"] = []
+    _public_methods = ["parse_json_string_into_object"]
 
-    def _get_item_names(self):
-        return [item for item in dir(self) if not item.startswith("_") and item != "parse_json_string_into_object"]
+    def _get_item_names(self) -> List[str]:
+        item_names = []
+        for item in dir(self):
+            if not item.startswith("_") and item not in self._public_methods:
+                item_names.append(item)
+        return item_names
 
-    def parse_json_string_into_object(self, json_string: str):
+    def parse_json_string_into_object(self, json_string: dict):
         return self._load(json_string)
 
-    @abstractmethod
-    def _load(self, json_response: str):
-        raise NotImplemented
+    def parse_json_string_into_array(self, json_string: list):
+        return self._load_list(json_string)
+
+    def _load(self, json_response: dict):
+        raise JSONTypeError
+
+    def _load_list(self, json_list: list):
+        raise JSONTypeError
 
     @abstractmethod
     def _get_item_map(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def _is_custom_list_field(self, name):
         is_custom_list: bool = False
@@ -30,7 +45,7 @@ class JSONInterface(ABC):
 
 class JSONObject(JSONInterface):
 
-    def _load(self, json_response):
+    def _load(self, json_response: dict):
         self._raw_json = json_response
         for item in self._get_item_names():
             self.__setattr__(item, self._parse_item(item, json_response))
@@ -42,7 +57,7 @@ class JSONObject(JSONInterface):
 
         if value is not None and self._is_custom_list_field(name):
             parser = make_array(self._custom_list_fields[name])
-            parser._load(value)
+            parser._load_list(value)
             value = parser._items
 
         return value
@@ -72,7 +87,7 @@ class JSONObjectArray(JSONObject):
     def __init__(self, item):
         self._item_class = item
 
-    def _load(self, json_list):
+    def _load_list(self, json_list: List[dict]):
         self._items = []
         for obj in json_list:
             item: JSONInterface = self._item_class()
