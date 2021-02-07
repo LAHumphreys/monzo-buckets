@@ -3,6 +3,7 @@ import json
 from typing import List
 from abc import ABC, abstractmethod
 
+
 class JSONTypeError(Exception):
     pass
 
@@ -11,7 +12,7 @@ class JSONInterface(ABC):
     _raw_json: dict = None
     _custom_list_fields = []
     _items: List["JSONInterface"] = []
-    _public_methods = ["parse_json_string_into_object"]
+    _public_methods = ["parse_json_string_into_object", "parse_json_string_into_array"]
 
     def _get_item_names(self) -> List[str]:
         item_names = []
@@ -19,18 +20,6 @@ class JSONInterface(ABC):
             if not item.startswith("_") and item not in self._public_methods:
                 item_names.append(item)
         return item_names
-
-    def parse_json_string_into_object(self, json_string: dict):
-        return self._load(json_string)
-
-    def parse_json_string_into_array(self, json_string: list):
-        return self._load_list(json_string)
-
-    def _load(self, json_response: dict):
-        raise JSONTypeError
-
-    def _load_list(self, json_list: list):
-        raise JSONTypeError
 
     @abstractmethod
     def _get_item_map(self):
@@ -45,7 +34,7 @@ class JSONInterface(ABC):
 
 class JSONObject(JSONInterface):
 
-    def _load(self, json_response: dict):
+    def parse_json_string_into_object(self, json_response: dict):
         self._raw_json = json_response
         for item in self._get_item_names():
             self.__setattr__(item, self._parse_item(item, json_response))
@@ -57,8 +46,8 @@ class JSONObject(JSONInterface):
 
         if value is not None and self._is_custom_list_field(name):
             parser = make_array(self._custom_list_fields[name])
-            parser._load_list(value)
-            value = parser._items
+            parser.parse_json_string_into_array(value)
+            value = parser.get_items()
 
         return value
 
@@ -86,12 +75,13 @@ class JSONObject(JSONInterface):
 class JSONObjectArray(JSONObject):
     def __init__(self, item):
         self._item_class = item
+        self._public_methods.append("get_items")
 
-    def _load_list(self, json_list: List[dict]):
+    def parse_json_string_into_array(self, json_list: list):
         self._items = []
         for obj in json_list:
-            item: JSONInterface = self._item_class()
-            item._load(obj)
+            item: JSONObject = self._item_class()
+            item.parse_json_string_into_object(obj)
             self._items.append(item)
 
     def _get_item_map(self):
@@ -100,15 +90,20 @@ class JSONObjectArray(JSONObject):
             result.append(item._get_item_map())
         return result
 
+    def get_items(self):
+        return self._items
 
-def make_scalar(source) -> JSONInterface:
+
+def make_scalar(source) -> JSONObject:
     class Derived(JSONObject, source):
         pass
+
     return Derived()
 
 
-def make_array(source) -> JSONInterface:
+def make_array(source) -> JSONObjectArray:
     class Derived(JSONObjectArray):
         def __init__(self):
-            super().__init__(make_scalar(source))
+            super().__init__(make_scalar(source).__class__)
+
     return Derived()
