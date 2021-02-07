@@ -1,5 +1,6 @@
 import json
 
+
 class MonzoContext:
     access_token = None
     refresh_token = None
@@ -7,6 +8,7 @@ class MonzoContext:
     client_secret = None
     redirect_uri = None
     client_code = None
+
 
 def load_context(path: str):
     with open(path) as file:
@@ -17,7 +19,7 @@ def load_context(path: str):
             context.__setattr__(item, config[item])
     return context
 
-def to_json(context: MonzoContext):
-    items = {i : context.__getattribute__(i) for i in dir(context) if not i.startswith("__")}
-    return json.dumps(items, indent=4)
 
+def to_json(context: MonzoContext):
+    items = {i: context.__getattribute__(i) for i in dir(context) if not i.startswith("__")}
+    return json.dumps(items, indent=4)

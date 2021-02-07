@@ -1,6 +1,35 @@
 import json
+from typing import List
+from abc import ABC, abstractmethod
 
-class JSONObject:
+
+class JSONInterface(ABC):
+    _custom_list_fields = []
+    _items: List["JSONInterface"] = []
+
+    def _get_item_names(self):
+        return [item for item in dir(self) if not item.startswith("_") and item != "parse_json_string_into_object"]
+
+    def parse_json_string_into_object(self, json_string: str):
+        return self._load(json_string)
+
+    @abstractmethod
+    def _load(self, json_response: str):
+        raise NotImplemented
+
+    @abstractmethod
+    def _get_item_map(self):
+        raise NotImplemented
+
+    def _is_custom_list_field(self, name):
+        is_custom_list: bool = False
+        if name in self._custom_list_fields:
+            is_custom_list = True
+        return is_custom_list
+
+
+class JSONObject(JSONInterface):
+
     def _load(self, json_response):
         self._raw_json = json_response
         for item in self._get_item_names():
@@ -12,27 +41,18 @@ class JSONObject:
             value = json_response[name]
 
         if value is not None and self._is_custom_list_field(name):
-            parser = make_array(self._custom_list_fields[name])()
+            parser = make_array(self._custom_list_fields[name])
             parser._load(value)
             value = parser._items
 
         return value
-
-    def _is_custom_list_field(self, name):
-        is_cust_list = False
-        if hasattr(self, "_custom_list_fields") and name in self._custom_list_fields:
-            is_cust_list = True
-        return  is_cust_list
-
-    def _get_item_names(self):
-        return [item for item in dir(self) if not item.startswith("_")]
 
     def _get_item_map(self):
         result = {}
         for item in self._get_item_names():
             value = self.__getattribute__(item)
             if self._is_custom_list_field(item):
-                encoded_values = value
+                encoded_values: List[JSONInterface] = value
                 value = []
                 for encoded_item in encoded_values:
                     value.append(encoded_item._get_item_map())
@@ -47,15 +67,15 @@ class JSONObject:
     def __repr__(self):
         return "<JSONObject>\n" + self.__str__() + "\n</JSONObject>"
 
+
 class JSONObjectArray(JSONObject):
-    def __init__(self, Item):
-        self._Item = Item
-        self._items = []
+    def __init__(self, item):
+        self._item_class = item
 
     def _load(self, json_list):
         self._items = []
         for obj in json_list:
-            item = self._Item()
+            item: JSONInterface = self._item_class()
             item._load(obj)
             self._items.append(item)
 
@@ -66,13 +86,14 @@ class JSONObjectArray(JSONObject):
         return result
 
 
-def make_scalar(Source) -> JSONObject:
-    class Derived(JSONObject, Source):
+def make_scalar(source) -> JSONInterface:
+    class Derived(JSONObject, source):
         pass
-    return Derived
+    return Derived()
 
-def make_array(Source) -> JSONObjectArray:
+
+def make_array(source) -> JSONInterface:
     class Derived(JSONObjectArray):
         def __init__(self):
-            super().__init__(make_scalar(Source))
-    return Derived
+            super().__init__(make_scalar(source))
+    return Derived()

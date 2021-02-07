@@ -1,13 +1,16 @@
 from urllib import request, parse
 from monzo.session_context import MonzoContext
+from http.client import HTTPResponse
 import json
 
-base_url = "https://api.monzo.com/"
+BASE_URL: str = "https://api.monzo.com/"
+
 
 class InvalidAuthorization(Exception):
     pass
 
-def parse_bearer_token(auth_response:str, context: MonzoContext):
+
+def parse_bearer_token(auth_response: HTTPResponse, context: MonzoContext):
     values = json.load(auth_response)
     if "token_type" not in values:
         raise InvalidAuthorization
@@ -17,8 +20,9 @@ def parse_bearer_token(auth_response:str, context: MonzoContext):
         context.access_token = values["access_token"]
         context.refresh_token = values["refresh_token"]
 
+
 def complete_login(context: MonzoContext):
-    url = base_url + "oauth2/token"
+    url = BASE_URL + "oauth2/token"
     data = {
         "grant_type": "authorization_code",
         "client_id": context.client_id,
@@ -32,8 +36,9 @@ def complete_login(context: MonzoContext):
     token_request.add_header("Content-Type", "application/x-www-form-urlencoded")
     parse_bearer_token(request.urlopen(token_request), context)
 
+
 def refresh_login(context: MonzoContext):
-    url = base_url + "oauth2/token"
+    url = BASE_URL + "oauth2/token"
     data = {
         "grant_type": "refresh_token",
         "client_id": context.client_id,
@@ -47,12 +52,12 @@ def refresh_login(context: MonzoContext):
     token_request.add_header("Content-Type", "application/x-www-form-urlencoded")
     parse_bearer_token(request.urlopen(token_request), context)
 
+
 def auth_json_request(context: MonzoContext, endpoint):
-    url = base_url + endpoint
+    url = BASE_URL + endpoint
     token_request = request.Request(url, method="GET")
     token_request.add_header("Authorization", "Bearer " + context.access_token)
 
     with request.urlopen(token_request) as response:
         result = json.load(response)
     return result
-

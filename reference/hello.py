@@ -3,6 +3,4 @@ from monzo.ping import who_am_i
 
 context = load_context("../config/authenticated.json")
 
-hello = who_am_i(context)
-
-print(hello)
+print(who_am_i(context))
