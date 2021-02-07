@@ -1,7 +1,8 @@
-from urllib import request, parse
-from monzo.session_context import MonzoContext
 from http.client import HTTPResponse
+from urllib import request, parse
 import json
+
+from monzo.session_context import MonzoContext
 
 BASE_URL: str = "https://api.monzo.com/"
 
@@ -12,13 +13,12 @@ class InvalidAuthorization(Exception):
 
 def parse_bearer_token(auth_response: HTTPResponse, context: MonzoContext):
     values = json.load(auth_response)
-    if "token_type" not in values:
+
+    if "token_type" not in values or "access_token" not in values:
         raise InvalidAuthorization
-    elif "access_token" not in values:
-        raise InvalidAuthorization
-    else:
-        context.access_token = values["access_token"]
-        context.refresh_token = values["refresh_token"]
+
+    context.access_token = values["access_token"]
+    context.refresh_token = values["refresh_token"]
 
 
 def complete_login(context: MonzoContext):
